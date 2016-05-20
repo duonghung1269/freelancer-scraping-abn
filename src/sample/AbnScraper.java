@@ -23,7 +23,7 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 
 public class AbnScraper extends AbstractScraper {
 
-	private static final int DEFAULT_FIND_ABN_TIMEOUT = 10; // in seconds
+	private static final int DEFAULT_FIND_ABN_TIMEOUT = 20; // in seconds
 
 	public AbnScraper() {
 		super();
