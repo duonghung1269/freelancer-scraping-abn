@@ -1,8 +1,10 @@
 package sample;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -10,15 +12,21 @@ import java.util.List;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
+import javax.xml.bind.Unmarshaller;
 
 import model.Abn;
 import model.AbnCollection;
 
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.openqa.selenium.By;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.phantomjs.PhantomJSDriver;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
@@ -29,10 +37,14 @@ public class AbnScraper extends AbstractScraper {
 	private static final String INPUT_PATH = "src/input/";
 	private static final String OUTPUT_PATH = "src/output/";
 	private static final String TIMEOUT_URL = "TIME_OUT";
+	
+	private static final String FINAL_PARSED_FILE_NAME = "abn_parsed_part_";
+	private static final String FINAL_PARSED_FILE_EXTENSION = ".csv";
 
 	public AbnScraper() {
 		super();
-		this.webDriver = new ChromeDriver();
+//		this.webDriver = new ChromeDriver();
+		this.webDriver = new PhantomJSDriver();
 	}
 
 	@Override
@@ -117,6 +129,83 @@ public class AbnScraper extends AbstractScraper {
 		return abnCollection;
 	}
 
+	public void scrapeEmail(List<Abn> abns) throws IOException {
+		Document doc;
+		
+		AbnCollection abnTimeoutEmailsCollection = new AbnCollection();
+		
+		StringBuilder sb = new StringBuilder();
+		final String NEW_LINE = System.getProperty("line.separator");
+		
+		for (int i = 0; i < abns.size(); i++) {
+			Abn abn = abns.get(i);
+			sb.append(abn.toString()).append(NEW_LINE);
+			
+			if (TIMEOUT_URL.equals(abn.getUrl())) {
+				abnTimeoutEmailsCollection.getAbns().add(abn);
+				continue;
+			}
+			try {
+				
+				// need http protocol
+				doc = Jsoup.connect(abn.getUrl())
+//						   .userAgent("Mozilla")
+						   .userAgent("Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36")
+						   .get();
+				
+				// get page title
+				String title = doc.title();
+				System.out.println("title : " + title);
+				
+				// get all links
+				Element emailElement = doc.getElementById("ctl00_TemplateBody_WebPartManager1_gwpciCharityDetails_ciCharityDetails_Email");
+				abn.setEmail(emailElement.text().trim());
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			
+			
+			
+			if (i > 0 && i % MAXIMUM_RECORDS_PARSED_PER_FILE == 0 ) {
+				File newFile = new File(OUTPUT_PATH + FINAL_PARSED_FILE_NAME + FINAL_PARSED_FILE_EXTENSION);
+				BufferedWriter writer = new BufferedWriter(new FileWriter(newFile, true));
+				writer.append(sb.toString());
+				writer.close();
+				
+				// clear string builder
+				sb = new StringBuilder();
+				
+				// sleep for 10 seconds
+				try {
+					Thread.sleep(10000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		
+	}
+	
+	public static void writeToCsvFile(List<Abn> abns) {
+		
+	}
+	
+	public static void main(String[] asdas) throws IOException {
+		File newFile = new File(OUTPUT_PATH + FINAL_PARSED_FILE_NAME + FINAL_PARSED_FILE_EXTENSION);
+		BufferedWriter writer = new BufferedWriter(new FileWriter(
+				newFile, true));
+		String newLine = System.getProperty("line.separator");
+		System.out.println("New Line: " + newLine);
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < 10; i ++) {
+			sb.append("huhu,").append(i).append(newLine);
+//			writer.write("huhu," + i);
+//			writer.newLine();
+		}
+		writer.write(sb.toString());
+		writer.close();
+	}
+	
 	public static void marshalToXML(AbnCollection abnCollection, String fileNameXML) {
 		try {
 			JAXBContext jaxbContext = JAXBContext
@@ -132,5 +221,31 @@ public class AbnScraper extends AbstractScraper {
 		} catch (JAXBException e) {
 			e.printStackTrace();
 		}
+	}
+	
+	public static AbnCollection unmarshalToAbnCollection(String fileNameXML) throws JAXBException {
+        try {
+
+        	File f = new File(INPUT_PATH + fileNameXML);
+            JAXBContext jaxbContext = JAXBContext.newInstance(AbnCollection.class);
+
+            Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
+            AbnCollection abnCollection = (AbnCollection) jaxbUnmarshaller.unmarshal(f);
+//            System.out.println(personCollection);
+            return abnCollection;
+        } catch (JAXBException e) {
+            throw e;
+        }
+        
+    }
+	
+	@Override
+	protected String getDriverName() {
+		return "phantomjs.binary.path";
+	}
+	
+	@Override
+	protected String getDriverPath() {
+		return "driver/phantomjs.exe";
 	}
 }

@@ -54,8 +54,8 @@ public class Abn {
 	public String toString() {
 		StringBuilder sb = new StringBuilder();
 		return sb.append(abn).append(",")
-				 .append(email).append(",")
-				 .append("url")
+				 .append(email)
+//				 .append("url")
 				 .toString();
 	}
 }
