@@ -80,6 +80,7 @@ public class AbnScraper extends AbstractScraper {
 							.get(0).getAttribute("href");
 			abn.setUrl(url);
 			abnCollection.getAbns().add(abn);
+			System.out.println(i);
 		}
 		
 		return abnCollection;
