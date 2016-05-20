@@ -24,6 +24,9 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 public class AbnScraper extends AbstractScraper {
 
 	private static final int DEFAULT_FIND_ABN_TIMEOUT = 20; // in seconds
+	private static final int MAXIMUM_RECORDS_PARSED_PER_FILE = 300;
+	private static final String INPUT_PATH = "src/input/";
+	private static final String OUTPUT_PATH = "src/output/";
 
 	public AbnScraper() {
 		super();
@@ -43,7 +46,7 @@ public class AbnScraper extends AbstractScraper {
 	public List<Abn> loadAbnFromFile(String filename) throws IOException {
 		List<Abn> list = new ArrayList<>();
 
-		File f = new File(filename);
+		File f = new File(INPUT_PATH + filename);
 		BufferedReader br = new BufferedReader(new FileReader(f));
 
 		String line = null;
@@ -58,6 +61,7 @@ public class AbnScraper extends AbstractScraper {
 
 	public AbnCollection scrap(List<Abn> list) {
 		AbnCollection abnCollection = new AbnCollection();
+		int fileIndex = 1;
 		for (int i = 0; i < list.size(); i++) {
 			WebElement abnTextfield = webDriver
 					.findElement(By
@@ -81,6 +85,20 @@ public class AbnScraper extends AbstractScraper {
 			abn.setUrl(url);
 			abnCollection.getAbns().add(abn);
 			System.out.println(i);
+			
+			if (i % MAXIMUM_RECORDS_PARSED_PER_FILE == 0) {
+				marshalToXML(abnCollection, "first_part_parse_" + fileIndex + ".xml");
+				abnCollection.getAbns().clear();
+				System.out.println("Parsed file index " + fileIndex);
+				fileIndex++;
+				
+				// sleep for 10 seconds
+				try {
+					Thread.sleep(10000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
 		}
 		
 		return abnCollection;
@@ -95,7 +113,7 @@ public class AbnScraper extends AbstractScraper {
 			// output pretty printed
 			jaxbMarshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
 
-			File f = new File(fileNameXML);
+			File f = new File(INPUT_PATH + fileNameXML);
 			jaxbMarshaller.marshal(abnCollection, f);
 
 		} catch (JAXBException e) {
