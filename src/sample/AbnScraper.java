@@ -58,7 +58,7 @@ public class AbnScraper extends AbstractScraper {
 
 	public AbnCollection scrap(List<Abn> list) {
 		AbnCollection abnCollection = new AbnCollection();
-		for (int i = 0; list.size() < 5; i++) {
+		for (int i = 0; i < list.size(); i++) {
 			WebElement abnTextfield = webDriver
 					.findElement(By
 							.id("ctl00_TemplateBody_WebPartManager1_gwpciNewQueryMenuCommon_ciNewQueryMenuCommon_ResultsGrid_Sheet0_Input1_TextBox1"));
