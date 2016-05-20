@@ -77,7 +77,8 @@ public class AbnScraper extends AbstractScraper {
 		AbnCollection abnCollection = new AbnCollection();
 		AbnCollection timeOutAbnCollection = new AbnCollection();
 		int fileIndex = 1;
-		for (int i = 0; i < list.size(); i++) {
+		int abnsSize = list.size();
+		for (int i = 0; i < abnsSize; i++) {
 			Abn abn = list.get(i);
 			try {
 				
@@ -103,7 +104,7 @@ public class AbnScraper extends AbstractScraper {
 				abnCollection.getAbns().add(abn);
 				System.out.println(i);
 				
-				if (i % MAXIMUM_RECORDS_PARSED_PER_FILE == 0) {
+				if ((i >= 0 && i % MAXIMUM_RECORDS_PARSED_PER_FILE == 0) || (i == abnsSize - 1)) {
 					marshalToXML(abnCollection, "first_part_parse_" + fileIndex + ".xml");
 					abnCollection.getAbns().clear();
 					System.out.println("Parsed file index " + fileIndex);
@@ -124,7 +125,7 @@ public class AbnScraper extends AbstractScraper {
 			}
 		}
 		
-		marshalToXML(timeOutAbnCollection, INPUT_PATH + "timeoutAbn.xml");
+		marshalToXML(timeOutAbnCollection, "timeoutAbn.xml");
 		
 		return abnCollection;
 	}
@@ -137,7 +138,9 @@ public class AbnScraper extends AbstractScraper {
 		StringBuilder sb = new StringBuilder();
 		final String NEW_LINE = System.getProperty("line.separator");
 		
-		for (int i = 0; i < abns.size(); i++) {
+		int abnsSize = abns.size();
+		
+		for (int i = 0; i < abnsSize; i++) {
 			Abn abn = abns.get(i);
 			sb.append(abn.toString()).append(NEW_LINE);
 			
@@ -166,7 +169,7 @@ public class AbnScraper extends AbstractScraper {
 			
 			
 			
-			if (i > 0 && i % MAXIMUM_RECORDS_PARSED_PER_FILE == 0 ) {
+			if ((i > 0 && i % MAXIMUM_RECORDS_PARSED_PER_FILE == 0) || (i == abns.size() - 1) ) {
 				File newFile = new File(OUTPUT_PATH + FINAL_PARSED_FILE_NAME + FINAL_PARSED_FILE_EXTENSION);
 				BufferedWriter writer = new BufferedWriter(new FileWriter(newFile, true));
 				writer.append(sb.toString());
