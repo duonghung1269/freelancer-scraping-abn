@@ -7,6 +7,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 import javax.xml.bind.JAXBContext;
@@ -26,14 +27,16 @@ import org.openqa.selenium.Keys;
 import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.phantomjs.PhantomJSDriver;
+import org.openqa.selenium.remote.DesiredCapabilities;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 public class AbnScraper extends AbstractScraper {
 
 	private static final int DEFAULT_FIND_ABN_TIMEOUT = 20; // in seconds
-	private static final int MAXIMUM_RECORDS_PARSED_PER_FILE = 300;
+	private static final int MAXIMUM_RECORDS_PARSED_PER_FILE = 1000;
 	private static final String INPUT_PATH = "src/input/";
 	private static final String OUTPUT_PATH = "src/output/";
 	private static final String TIMEOUT_URL = "TIME_OUT";
@@ -43,8 +46,19 @@ public class AbnScraper extends AbstractScraper {
 
 	public AbnScraper() {
 		super();
-//		this.webDriver = new ChromeDriver();
-		this.webDriver = new PhantomJSDriver();
+//		ChromeOptions options = new ChromeOptions();
+//		HashMap<String, Object> prefs = new HashMap<>();
+//		prefs.put("profile.managed_default_content_settings.images", 2);
+//		
+//		DesiredCapabilities chromeCaps = DesiredCapabilities.chrome();
+//		chromeCaps.setJavascriptEnabled(false);
+//		chromeCaps.setCapability(ChromeOptions.CAPABILITY, options);
+		
+		ChromeOptions op = new ChromeOptions();
+	    op.addExtensions(new File("C:\\chrome_block_image\\Block-image_v1.0.crx"));
+		this.webDriver = new ChromeDriver(op);
+		
+//		this.webDriver = new PhantomJSDriver();
 	}
 
 	@Override
@@ -73,7 +87,7 @@ public class AbnScraper extends AbstractScraper {
 		return list;
 	}
 
-	public AbnCollection scrap(List<Abn> list) {
+	public AbnCollection scrap(List<Abn> list, String parsedFileName) {
 		AbnCollection abnCollection = new AbnCollection();
 		AbnCollection timeOutAbnCollection = new AbnCollection();
 		int fileIndex = 1;
@@ -104,12 +118,21 @@ public class AbnScraper extends AbstractScraper {
 				abnCollection.getAbns().add(abn);
 				System.out.println(i);
 				
-				if ((i >= 0 && i % MAXIMUM_RECORDS_PARSED_PER_FILE == 0) || (i == abnsSize - 1)) {
-					marshalToXML(abnCollection, "first_part_parse_" + fileIndex + ".xml");
+				if ((i > 0 && i % MAXIMUM_RECORDS_PARSED_PER_FILE == 0) || (i == abnsSize - 1)) {
+					marshalToXML(abnCollection, parsedFileName + fileIndex + ".xml");
 					abnCollection.getAbns().clear();
 					System.out.println("Parsed file index " + fileIndex);
 					fileIndex++;
 					
+//					// sleep for 10 seconds
+//					try {
+//						Thread.sleep(10000);
+//					} catch (InterruptedException e) {
+//						e.printStackTrace();
+//					}
+				}
+				
+				if (i > 0 && i % 300 == 0) {
 					// sleep for 10 seconds
 					try {
 						Thread.sleep(10000);
@@ -117,7 +140,8 @@ public class AbnScraper extends AbstractScraper {
 						e.printStackTrace();
 					}
 				}
-			} catch (TimeoutException ex) {
+				
+			} catch (Exception ex) {
 				ex.printStackTrace();
 				abn.setUrl(TIMEOUT_URL);
 				abnCollection.getAbns().add(abn);
@@ -125,13 +149,13 @@ public class AbnScraper extends AbstractScraper {
 			}
 		}
 		
-		marshalToXML(timeOutAbnCollection, "timeoutAbn.xml");
+		marshalToXML(timeOutAbnCollection, parsedFileName + "_timeoutAbn.xml");
 		
 		return abnCollection;
 	}
 
 	public void scrapeEmail(List<Abn> abns) throws IOException {
-		Document doc;
+//		Document doc;
 		
 		AbnCollection abnTimeoutEmailsCollection = new AbnCollection();
 		
@@ -142,32 +166,34 @@ public class AbnScraper extends AbstractScraper {
 		
 		for (int i = 0; i < abnsSize; i++) {
 			Abn abn = abns.get(i);
-			sb.append(abn.toString()).append(NEW_LINE);
 			
 			if (TIMEOUT_URL.equals(abn.getUrl())) {
 				abnTimeoutEmailsCollection.getAbns().add(abn);
+				sb.append(abn.toString()).append(NEW_LINE);
 				continue;
 			}
 			try {
-				
+				openSite(abn.getUrl());
+				WebElement emailElement = webDriver.findElement(By.id("ctl00_TemplateBody_WebPartManager1_gwpciCharityDetails_ciCharityDetails_Email"));
 				// need http protocol
-				doc = Jsoup.connect(abn.getUrl())
+//				doc = Jsoup.connect(abn.getUrl())
+//						   .timeout(DEFAULT_FIND_ABN_TIMEOUT * 1000)
 //						   .userAgent("Mozilla")
-						   .userAgent("Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36")
-						   .get();
+////						   .userAgent("Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36")
+//						   .get();
 				
 				// get page title
-				String title = doc.title();
-				System.out.println("title : " + title);
+//				String title = doc.title();
+//				System.out.println("title : " + title);
 				
 				// get all links
-				Element emailElement = doc.getElementById("ctl00_TemplateBody_WebPartManager1_gwpciCharityDetails_ciCharityDetails_Email");
-				abn.setEmail(emailElement.text().trim());
-			} catch (IOException e) {
+//				Element emailElement = doc.getElementById("ctl00_TemplateBody_WebPartManager1_gwpciCharityDetails_ciCharityDetails_Email");
+				abn.setEmail(emailElement.getText().trim());
+			} catch (Exception e) {
 				e.printStackTrace();
 			}
 			
-			
+			sb.append(abn.toString()).append(NEW_LINE);
 			
 			if ((i > 0 && i % MAXIMUM_RECORDS_PARSED_PER_FILE == 0) || (i == abns.size() - 1) ) {
 				File newFile = new File(OUTPUT_PATH + FINAL_PARSED_FILE_NAME + FINAL_PARSED_FILE_EXTENSION);
@@ -185,6 +211,72 @@ public class AbnScraper extends AbstractScraper {
 					e.printStackTrace();
 				}
 			}
+			
+			System.out.println(i + 1);
+		}
+		
+	}
+	
+	public void scrapeEmailJSoup(List<Abn> abns) throws IOException {
+		Document doc;
+		
+		AbnCollection abnTimeoutEmailsCollection = new AbnCollection();
+		
+		StringBuilder sb = new StringBuilder();
+		final String NEW_LINE = System.getProperty("line.separator");
+		
+		int abnsSize = abns.size();
+		
+		for (int i = 0; i < abnsSize; i++) {
+			Abn abn = abns.get(i);
+			
+			if (TIMEOUT_URL.equals(abn.getUrl())) {
+				abnTimeoutEmailsCollection.getAbns().add(abn);
+				sb.append(abn.toString()).append(NEW_LINE);
+				continue;
+			}
+			try {
+//				openSite(abn.getUrl());
+//				WebElement emailElement = webDriver.findElement(By.id("ctl00_TemplateBody_WebPartManager1_gwpciCharityDetails_ciCharityDetails_Email"));
+				// need http protocol
+				doc = Jsoup.connect(abn.getUrl())
+						   .timeout(DEFAULT_FIND_ABN_TIMEOUT * 1000)
+						   .userAgent("Mozilla")
+//						   .userAgent("Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36")
+						   .get();
+				
+				// get page title
+				String title = doc.title();
+				System.out.println("title : " + title);
+				
+				// get all links
+				Element emailElement = doc.getElementById("ctl00_TemplateBody_WebPartManager1_gwpciCharityDetails_ciCharityDetails_Email");
+				abn.setEmail(emailElement.text().trim());
+				System.out.println(abn.getEmail());
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			
+			sb.append(abn.toString()).append(NEW_LINE);
+			
+			if ((i > 0 && i % MAXIMUM_RECORDS_PARSED_PER_FILE == 0) || (i == abns.size() - 1) ) {
+				File newFile = new File(OUTPUT_PATH + FINAL_PARSED_FILE_NAME + FINAL_PARSED_FILE_EXTENSION);
+				BufferedWriter writer = new BufferedWriter(new FileWriter(newFile, true));
+				writer.append(sb.toString());
+				writer.close();
+				
+				// clear string builder
+				sb = new StringBuilder();
+				
+				// sleep for 10 seconds
+				try {
+					Thread.sleep(10000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+			
+			System.out.println(i + 1);
 		}
 		
 	}
@@ -242,13 +334,13 @@ public class AbnScraper extends AbstractScraper {
         
     }
 	
-	@Override
-	protected String getDriverName() {
-		return "phantomjs.binary.path";
-	}
-	
-	@Override
-	protected String getDriverPath() {
-		return "driver/phantomjs.exe";
-	}
+//	@Override
+//	protected String getDriverName() {
+//		return "phantomjs.binary.path";
+//	}
+//	
+//	@Override
+//	protected String getDriverPath() {
+//		return "driver/phantomjs.exe";
+//	}
 }
