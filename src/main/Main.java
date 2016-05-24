@@ -38,7 +38,7 @@ public class Main {
 		long end = System.currentTimeMillis();
 //		AbnScraper.marshalToXML(unmarshalToAbnCollection, "first_part_parsed_email_final.xml");
 		System.out.println("=--- spend: " + (end - start));
-		scraper.closeBrowser();
+//		scraper.closeBrowser();
 	}
 
 }

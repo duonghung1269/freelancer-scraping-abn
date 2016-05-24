@@ -13,8 +13,10 @@ public class MainThread {
 		Thread serverThread = new Thread() {
 			public void run() {
 				try {
-					Main.main(new String[] { "second_part_2_2_3000.txt",
-							"second_part_parsed_email_2_2_3000.xml" });
+					Main.main(new String[] { "second_part_2_30001_33000.txt",
+							"second_part_parsed_email_2_30001_33000.xml" });
+//					Main.main(new String[] { "second_part_2_20001_21000.txt",
+//					"second_part_parsed_email_2_20001_21000.xml" });
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -28,8 +30,10 @@ public class MainThread {
 		Thread clientThread = new Thread() {
 			public void run() {
 				try {
-					Main.main(new String[] { "second_part_2_3001_6000.txt",
-							"second_part_parsed_email_2_2_3001_6000.xml" });
+					Main.main(new String[] { "second_part_2_33001_36000.txt",
+							"second_part_parsed_email_2_33001_36000.xml" });
+//					Main.main(new String[] { "second_part_2_30001_33000.txt",
+//					"second_part_parsed_email_2_23001_24000.xml" });
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();

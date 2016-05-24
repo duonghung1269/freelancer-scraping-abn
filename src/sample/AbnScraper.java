@@ -146,6 +146,15 @@ public class AbnScraper extends AbstractScraper {
 				abn.setUrl(TIMEOUT_URL);
 				abnCollection.getAbns().add(abn);
 				timeOutAbnCollection.getAbns().add(abn);
+				
+				String title = webDriver.findElement(By.tagName("title")).getText().toLowerCase().trim();
+				if (title.contains("sign in")) { // navigate to main page
+					start(); 
+				}
+//				WebElement sign_in = webDriver
+//						.findElement(By
+//								.id("ctl00_TemplateBody_WebPartManager1_gwpciNewContactSignInCommon_ciNewContactSignInCommon_signInUserName"));
+				
 			}
 		}
 		
