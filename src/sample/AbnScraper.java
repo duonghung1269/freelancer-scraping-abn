@@ -188,8 +188,12 @@ public class AbnScraper extends AbstractScraper {
 				continue;
 			}
 			try {
-				openSite(abn.getUrl());
-				WebElement emailElement = webDriver.findElement(By.id("ctl00_TemplateBody_WebPartManager1_gwpciCharityDetails_ciCharityDetails_Email"));
+//				openSite(abn.getUrl());
+				
+				webDriver.get(abn.getUrl());
+				WebElement emailElement = (new WebDriverWait(webDriver, getTimeout())).until(ExpectedConditions.presenceOfElementLocated(By.id("ctl00_TemplateBody_WebPartManager1_gwpciCharityDetails_ciCharityDetails_Email")));
+				
+//				WebElement emailElement = webDriver.findElement(By.id("ctl00_TemplateBody_WebPartManager1_gwpciCharityDetails_ciCharityDetails_Email"));
 				// need http protocol
 //				doc = Jsoup.connect(abn.getUrl())
 //						   .timeout(DEFAULT_FIND_ABN_TIMEOUT * 1000)
