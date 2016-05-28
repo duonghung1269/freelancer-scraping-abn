@@ -39,6 +39,7 @@ public class AbnScraper extends AbstractScraper {
 	private static final int MAXIMUM_RECORDS_PARSED_PER_FILE = 1000;
 	private static final String INPUT_PATH = "src/input/";
 	private static final String OUTPUT_PATH = "src/output/";
+	private static final String PYTHON_PATH = "src/python/";
 	private static final String TIMEOUT_URL = "TIME_OUT";
 	
 	private static final String FINAL_PARSED_FILE_NAME = "abn_parsed_part_";
@@ -118,10 +119,14 @@ public class AbnScraper extends AbstractScraper {
 				abnCollection.getAbns().add(abn);
 				System.out.println(i);
 				
-				if ((i > 0 && i % MAXIMUM_RECORDS_PARSED_PER_FILE == 0) || (i == abnsSize - 1)) {
+				if ((i > 0 && i % MAXIMUM_RECORDS_PARSED_PER_FILE == (MAXIMUM_RECORDS_PARSED_PER_FILE - 1)) || (i == abnsSize - 1)) {
 					marshalToXML(abnCollection, parsedFileName + fileIndex + ".xml");
 					abnCollection.getAbns().clear();
 					System.out.println("Parsed file index " + fileIndex);
+					
+					marshalToXML(timeOutAbnCollection, parsedFileName + "_" + fileIndex + "_timeoutAbn.xml");
+					timeOutAbnCollection.getAbns().clear();
+					
 					fileIndex++;
 					
 //					// sleep for 10 seconds
@@ -147,10 +152,11 @@ public class AbnScraper extends AbstractScraper {
 				abnCollection.getAbns().add(abn);
 				timeOutAbnCollection.getAbns().add(abn);
 				
-				String title = webDriver.findElement(By.tagName("title")).getText().toLowerCase().trim();
-				if (title.contains("sign in")) { // navigate to main page
+//				String title = webDriver.findElement(By.tagName("title")).getText().toLowerCase().trim();
+//				System.out.println("=====title: " + title);
+//				if (title.contains("sign in")) { // navigate to main page
 					start(); 
-				}
+//				}
 //				WebElement sign_in = webDriver
 //						.findElement(By
 //								.id("ctl00_TemplateBody_WebPartManager1_gwpciNewContactSignInCommon_ciNewContactSignInCommon_signInUserName"));
@@ -158,12 +164,12 @@ public class AbnScraper extends AbstractScraper {
 			}
 		}
 		
-		marshalToXML(timeOutAbnCollection, parsedFileName + "_timeoutAbn.xml");
+		
 		
 		return abnCollection;
 	}
 
-	public void scrapeEmail(List<Abn> abns) throws IOException {
+	public void scrapeEmail(List<Abn> abns, String emailPrefixFileName) throws IOException {
 //		Document doc;
 		
 		AbnCollection abnTimeoutEmailsCollection = new AbnCollection();
@@ -172,7 +178,7 @@ public class AbnScraper extends AbstractScraper {
 		final String NEW_LINE = System.getProperty("line.separator");
 		
 		int abnsSize = abns.size();
-		
+		int fileIndex = 1;
 		for (int i = 0; i < abnsSize; i++) {
 			Abn abn = abns.get(i);
 			
@@ -204,11 +210,13 @@ public class AbnScraper extends AbstractScraper {
 			
 			sb.append(abn.toString()).append(NEW_LINE);
 			
-			if ((i > 0 && i % MAXIMUM_RECORDS_PARSED_PER_FILE == 0) || (i == abns.size() - 1) ) {
-				File newFile = new File(OUTPUT_PATH + FINAL_PARSED_FILE_NAME + FINAL_PARSED_FILE_EXTENSION);
+			if ((i > 0 && i % MAXIMUM_RECORDS_PARSED_PER_FILE == (MAXIMUM_RECORDS_PARSED_PER_FILE - 1)) || (i == abns.size() - 1) ) {
+				File newFile = new File(OUTPUT_PATH + FINAL_PARSED_FILE_NAME + emailPrefixFileName + "_" + fileIndex + FINAL_PARSED_FILE_EXTENSION);
 				BufferedWriter writer = new BufferedWriter(new FileWriter(newFile, true));
 				writer.append(sb.toString());
 				writer.close();
+				
+				fileIndex++;
 				
 				// clear string builder
 				sb = new StringBuilder();
@@ -342,6 +350,40 @@ public class AbnScraper extends AbstractScraper {
         }
         
     }
+	
+	public static void updateUrlTimeout(String fromFileXml, String toFileXml) throws JAXBException {
+		AbnCollection fromCollection = unmarshalToAbnCollection(fromFileXml);
+		AbnCollection toCollection = unmarshalToAbnCollection(toFileXml);
+		List<Abn> fromAbns = fromCollection.getAbns();
+		List<Abn> toAbns = toCollection.getAbns();
+		for (Abn fromAbn : fromAbns) {
+			for (Abn toAbn : toAbns) {
+				if (fromAbn.getAbn().equals(toAbn.getAbn())) {
+					toAbn.setUrl(fromAbn.getUrl());
+					continue;
+				}
+			}
+		}
+		
+		marshalToXML(toCollection, "updated_url_timeout_" + toFileXml);
+	}
+	
+	public static void writeToCsvFile(String parsedUrlXmlFile, String outputCsvFileName) throws JAXBException, IOException {
+		AbnCollection fromCollection = unmarshalToAbnCollection(parsedUrlXmlFile);
+//		File f = new File(PYTHON_PATH + outputCsvFileName);
+		FileWriter writer = new FileWriter(PYTHON_PATH + outputCsvFileName);
+		for (Abn abn : fromCollection.getAbns()) {
+			writer.append(abn.getAbn());
+			writer.append(',');
+			writer.append(abn.getUrl());
+			writer.append(',');
+			writer.append('\n');
+			
+		}
+		
+		writer.flush();
+	    writer.close();
+	}
 	
 //	@Override
 //	protected String getDriverName() {
