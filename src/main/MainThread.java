@@ -4,6 +4,12 @@ import java.io.IOException;
 
 import javax.xml.bind.JAXBException;
 
+import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
+
+import model.AbnCollection;
+
+import sample.AbnScraper;
+
 public class MainThread {
 
 	public static void scrapEmail() {
@@ -255,15 +261,29 @@ public class MainThread {
 				
 	}
 	
+	private static void fillEmailToExcel() {
+		AbnCollection abnCollection;
+		try {
+			abnCollection = AbnScraper.readAllCsvFiles();
+//			abnCollection = AbnScraper.readAbnCsvFile("abn_parsed_part_2_3000.csv");
+			AbnScraper.fillEmailToExcel("ACNC_The_remaining_list.xlsx", abnCollection);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InvalidFormatException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
 	public static void main(String[] args) {
-		// TODO Auto-generated method stub
-		// second_part_2_2_3000.txt second_part_parsed_email_2_2_3000.xml
-		
 //		scrapeUrl();
 //		scrapeTimeoutUrl();
 //		syncUrlTimeoutToMainFile();
 //		writeToCsvFile();
-		scrapEmail();
+//		scrapEmail();
+		
+		fillEmailToExcel();
 	}
 
 	

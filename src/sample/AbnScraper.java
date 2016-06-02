@@ -3,12 +3,15 @@ package sample;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
@@ -18,20 +21,24 @@ import javax.xml.bind.Unmarshaller;
 import model.Abn;
 import model.AbnCollection;
 
+import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
 import org.openqa.selenium.By;
 import org.openqa.selenium.Keys;
-import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
-import org.openqa.selenium.phantomjs.PhantomJSDriver;
-import org.openqa.selenium.remote.DesiredCapabilities;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+
+import com.beust.jcommander.Strings;
 
 public class AbnScraper extends AbstractScraper {
 
@@ -387,6 +394,155 @@ public class AbnScraper extends AbstractScraper {
 		
 		writer.flush();
 	    writer.close();
+	}
+	
+	// Utility which converts CSV to ArrayList using Split Operation
+	public static AbnCollection readAbnCsvFile(String crunchifyCSV) throws IOException {
+		AbnCollection abnCollection = new AbnCollection();
+		List<Abn> crunchifyResult = new ArrayList<>();
+		
+		BufferedReader crunchifyBuffer = null;
+		
+		try {
+			String crunchifyLine;
+			crunchifyBuffer = new BufferedReader(new FileReader(OUTPUT_PATH + crunchifyCSV));
+			
+			// How to read file in java line by line?
+			while ((crunchifyLine = crunchifyBuffer.readLine()) != null) {
+				System.out.println("Raw CSV data: " + crunchifyLine);
+				String[] split = crunchifyLine.split(",");
+				Abn abn = new Abn();
+				abn.setAbn(split[0].trim());
+				if (split.length > 1) {
+					abn.setEmail(split[1].trim());
+				} else {
+					abn.setEmail("");
+				}
+				
+				crunchifyResult.add(abn);
+			}
+			
+		} catch (IOException e) {
+			throw e;
+		} finally {
+			try {
+				if (crunchifyBuffer != null) crunchifyBuffer.close();
+			} catch (IOException crunchifyException) {
+				crunchifyException.printStackTrace();
+			}
+		}
+		
+		abnCollection.setAbns(crunchifyResult);
+		
+		return abnCollection;
+	}
+	
+	// Utility which converts CSV to ArrayList using Split Operation
+	public static ArrayList<String> crunchifyCSVtoArrayList(String crunchifyCSV) {
+		ArrayList<String> crunchifyResult = new ArrayList<String>();
+		
+		if (crunchifyCSV != null) {
+			String[] splitData = crunchifyCSV.split("\\s*,\\s*");
+			for (int i = 0; i < splitData.length; i++) {
+				if (!(splitData[i] == null) || !(splitData[i].length() == 0)) {
+					crunchifyResult.add(splitData[i].trim());
+				}
+			}
+		}
+		
+		return crunchifyResult;
+	}
+	
+	public static AbnCollection readAllCsvFiles() throws IOException {
+		File folder = new File(OUTPUT_PATH);
+		File[] listOfFiles = folder.listFiles();
+
+		AbnCollection abnCollection = new AbnCollection();
+		
+		for (int i = 0; i < listOfFiles.length; i++) {
+		  File file = listOfFiles[i];
+		  if (file.isFile() && file.getName().endsWith(".csv")) {
+			  AbnCollection tmp = readAbnCsvFile(file.getName());
+			  abnCollection.getAbns().addAll(tmp.getAbns());
+		  } 
+		}
+		
+		return abnCollection;
+	}
+	
+	public static void fillEmailToExcel(String excelFileName, AbnCollection abnWithEmailCollection) throws IOException, InvalidFormatException {
+		//Read the spreadsheet that needs to be updated
+//		FileInputStream fsIP= new FileInputStream(new File(OUTPUT_PATH + excelFileName));
+		File f = new File(OUTPUT_PATH + excelFileName);
+		//Access the workbook                  
+		Workbook wb = new XSSFWorkbook(f);
+		//Access the worksheet, so that we can update / modify it. 
+		Sheet worksheet = wb.getSheetAt(0); 
+		
+		Map<String, String> map = new HashMap<>();
+		Abn tmpAbn = null;
+		for (int i = 0; i < abnWithEmailCollection.getAbns().size(); i++) {
+			tmpAbn = abnWithEmailCollection.getAbns().get(i);
+			map.put(tmpAbn.getAbn(), tmpAbn.getEmail());
+		}
+		
+		int rowNo = 1;
+		int abnColNo = 0;
+		int emailColNo = 1;
+		String cellAbnVal = "";
+		String emailVal = "";
+		
+		// declare a Cell object
+		Cell abnCell = null;
+		Cell emailCell = null;
+		
+		do {
+			// Access the second cell in second row to update the value
+			Row row = worksheet.getRow(rowNo);
+			if (row == null) {
+				break;
+			}
+			abnCell = row.getCell(abnColNo);   
+			abnCell.setCellType(Cell.CELL_TYPE_STRING);
+			
+			emailCell = row.getCell(emailColNo, Row.CREATE_NULL_AS_BLANK);
+			
+			cellAbnVal = abnCell.getStringCellValue();
+			try {
+				emailVal = map.get(cellAbnVal);
+				
+				emailCell.setCellValue(emailVal);
+				
+			} catch (NullPointerException ex) {
+				System.out.println(ex);
+			}
+			
+			System.out.println("row: " + rowNo);
+			rowNo++;			
+		} while (!isCellEmpty(abnCell));
+		
+//		// Get current cell value value and overwrite the value
+//		cell.setCellValue("OverRide existing value");
+		//Close the InputStream  
+//		f.close(); 
+		//Open FileOutputStream to write updates
+		FileOutputStream output_file =new FileOutputStream(new File(OUTPUT_PATH + "filled_" + excelFileName));  
+		 //write changes
+		wb.write(output_file);
+		//close the stream
+		output_file.close();
+	}
+	
+	public static boolean isCellEmpty(final Cell cell) {
+	    if (cell == null || cell.getCellType() == Cell.CELL_TYPE_BLANK) {
+	        return true;
+	    }
+
+	    if (cell.getCellType() == Cell.CELL_TYPE_STRING && cell.getStringCellValue().isEmpty()) {
+	        return true;
+	    }
+
+	    return false;
 	}
 	
 //	@Override
